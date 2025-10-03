@@ -1,0 +1,33 @@
+# Window & data
+N: 120            # window size (samples)
+seed: 42
+
+# Baselines for steady busy (near-constant high load in [0,1])
+# You can tweak per-metric means and small noise (stddev)
+levels:
+  smact_mean: 0.78
+  smocc_mean: 0.62
+  drama_mean: 0.65
+noise:
+  smact_std: 0.03
+  smocc_std: 0.03
+  drama_std: 0.03
+
+# EMA
+alpha_mode: auto  # "auto" or "manual"
+alpha: 0.1        # used only if alpha_mode == "manual"
+
+# Output
+outdir: .
+readme: README.md
+readme_mode: append   # append a new section for Pattern 2
+
+# Per-metric risk weights (RISK = wT*T + wE*E + wB*B + wC*C)
+risk_weights:
+  wT: 0.5
+  wE: 0.3
+  wB: 0.1
+  wC: 0.1
+
+# Trend flag threshold on absolute slope
+trend_slope_threshold: 0.002
