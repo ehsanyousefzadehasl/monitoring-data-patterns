@@ -38,67 +38,44 @@ Recognizing these patterns helps assess *collocation risk* — whether placing a
    - Safe for collocation only after cool-off.
 
 ---
-
 ## Statistical Metrics
 
-For each metric stream (**SMACT**, **SMOCC**, **DRAMA**), we compute window statistics.  
-These provide complementary perspectives on GPU behavior.
+For each metric stream (**SMACT**, **SMOCC**, **DRAMA**) we compute the following:
 
 ### 1. Mean
-\[
-\text{mean}(x) = \frac{1}{N}\sum_{i=1}^N x_i
-\]  
-- **Reveals**: overall average utilization.  
-- **Good for**: steady patterns.  
-- **Weakness**: hides bursts.
+Formula: mean(x) = (1/N) * Σ x_i  
+- Reveals: overall average utilization.  
+- Good for: steady patterns.  
+- Weakness: hides bursts.
 
 ### 2. Median
-\[
-\text{median}(x) = \text{50th percentile of } x
-\]  
-- **Reveals**: central tendency robust to outliers.  
-- **Good for**: noisy data with occasional spikes.
+Formula: median(x) = 50th percentile of x  
+- Reveals: central tendency robust to outliers.  
+- Good for: noisy data with occasional spikes.
 
 ### 3. Percentiles (p95, p99)
-\[
-\text{p}q(x) = \min \left\{ v \,\middle|\, \frac{\#\{x_i \leq v\}}{N} \geq q \right\}
-\]  
-- **Reveals**: tail behavior (bursts, spikes).  
-- **Good for**: detecting rare but impactful high utilization.  
-- **Weakness**: insensitive to sustained high load if only a few points.
+Formula: p_q(x) = smallest v such that (# of x_i ≤ v) / N ≥ q  
+- Reveals: tail behavior (bursts, spikes).  
+- Good for: detecting rare but impactful high utilization.  
+- Weakness: insensitive to sustained high load if only a few points.
 
 ### 4. Exponential Moving Average (EMA)
-\[
-\text{EMA}_t = \alpha \, x_t + (1-\alpha) \, \text{EMA}_{t-1}
-\]  
-with smoothing factor \( \alpha \in (0,1) \).  
-- **Reveals**: recent trend, weights latest samples more.  
-- **Good for**: catching shifts quickly.  
-- **Weakness**: sensitive to choice of α.
+Formula: EMA_t = α * x_t + (1−α) * EMA_(t−1), with smoothing factor α ∈ (0,1)  
+- Reveals: recent trend, weights latest samples more.  
+- Good for: catching shifts quickly.  
+- Weakness: sensitive to α.
 
 ### 5. Coefficient of Variation (CV)
-\[
-\text{CV}(x) = \frac{\sigma(x)}{\mu(x)}
-\]  
-- **Reveals**: relative burstiness (variance scaled by mean).  
-- **Good for**: identifying unstable or spiky workloads.  
-- **Weakness**: undefined/unstable when mean is near zero.
+Formula: CV(x) = std(x) / mean(x)  
+- Reveals: relative burstiness (variance scaled by mean).  
+- Good for: identifying unstable or spiky workloads.  
+- Weakness: unstable if mean ≈ 0.
 
 ### 6. Median Absolute Deviation (MAD)
-\[
-\text{MAD}(x) = \text{median}\bigl(|x_i - \text{median}(x)|\bigr)
-\]  
-- **Reveals**: robust spread of data around the median.  
-- **Good for**: detecting variability without being skewed by a few outliers.  
+Formula: MAD(x) = median(|x_i − median(x)|)  
+- Reveals: robust spread of data around the median.  
+- Good for: detecting variability without being skewed by outliers.
 
----
-
-## Why Combine Them?
-
-- **Mean/Median** → summarize “central” load.  
-- **Percentiles (p95/p99)** → capture rare but impactful spikes.  
-- **EMA** → track recent changes in utilization.  
-- **CV & MAD** → quantify burstiness and variability.  
 
 Together, these metrics provide a **composite view** of GPU behavior.  
 This allows both:
