@@ -1,0 +1,63 @@
+# Window & data
+N: 120
+seed: 42
+
+# Baseline levels (pre-spike)
+levels:
+  smact_base: 0.10
+  smocc_base: 0.08
+  drama_base: 0.12
+
+# Noise (std dev) per metric
+noise:
+  smact_std: 0.02
+  smocc_std: 0.02
+  drama_std: 0.02
+
+# Late spike model per metric (low -> rise -> spike near end)
+# y = base + exp_rise(start_at, tau, rise_amp) + gaussian_pulse(center, width, amp)
+late_spike:
+  smact:
+    start_at: 80     # when rise begins
+    tau: 15          # rise time constant
+    rise_amp: 0.25   # amplitude of the pre-spike rise
+    center: 108      # spike center (near end)
+    width: 4         # spike width (std, samples)
+    amp: 0.6         # spike amplitude
+  smocc:
+    start_at: 78
+    tau: 18
+    rise_amp: 0.20
+    center: 106
+    width: 5
+    amp: 0.55
+  drama:
+    start_at: 82
+    tau: 16
+    rise_amp: 0.22
+    center: 109
+    width: 4
+    amp: 0.58
+
+# Clipping bounds
+clip_min: 0.0
+clip_max: 1.0
+
+# EMA
+alpha_mode: auto  # "auto" or "manual"
+alpha: 0.1        # used only if alpha_mode == "manual"
+
+# Output
+outdir: .
+readme: README.md
+readme_mode: append
+
+# Per-metric risk weights (RISK = wT*T + wE*E + wB*B + wC*C)
+risk_weights:
+  wT: 0.5
+  wE: 0.3
+  wB: 0.1
+  wC: 0.1
+
+# Trend flag threshold (on absolute slope)
+trend_slope_threshold: 0.002
