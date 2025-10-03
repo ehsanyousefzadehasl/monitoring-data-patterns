@@ -1,7 +1,7 @@
 # Monitoring Patterns and Statistical Metrics
 
 Monitoring GPU hardware counters (such as **SMACT**, **SMOCC**, and **DRAMA**) over sliding windows reveals characteristic **patterns** of activity.  
-Recognizing these patterns helps assess *collocation risk* — whether placing another workload on the same GPU will cause interference.
+Recognizing these patterns helps assess *collocation risk* — whether placing another workload on the same GPU will cause dramatically harmful interference.
 
 ---
 
@@ -83,3 +83,50 @@ This allows both:
 - **Quantitative scoring** (e.g., a collocation risk metric).  
 
 ---
+
+
+## Per-Metric Trend Flags and Composite Risk
+
+We compute **all statistics per metric stream** — separately for **SMACT**, **SMOCC**, and **DRAMA** — over the window. Let the three series be x_S (SMACT), x_O (SMOCC), x_D (DRAMA).
+
+### Per-Metric Features (computed for each of: SMACT, SMOCC, DRAMA)
+- mean(x)          : overall average
+- median(x)        : robust central tendency
+- p95(x), p99(x)   : tail (bursts/spikes)
+- EMA_last(x)      : exponential moving average at window end
+- CV(x)            : coefficient of variation = std(x) / mean(x)
+- MAD(x)           : median absolute deviation
+- slope(x)         : linear-regression slope of x vs. time (least squares)
+- trend_flag(x)    : 1 if |slope(x)| > τ, else 0  (τ is a small threshold)
+
+**Notes**
+- EMA_last uses α either manually set or α ≈ 2/(N+1) when auto-derived.
+- trend_flag is per metric; a series with noticeable drift (up/down) within the window sets its own flag to 1.
+
+### Aggregating Per-Metric Features into a Single Per-GPU Score
+Define the **per-metric** components:
+- Tail per metric:      T_S = p95(x_S), T_O = p95(x_O), T_D = p95(x_D)
+- Recency per metric:   E_S = EMA_last(x_S), E_O = EMA_last(x_O), E_D = EMA_last(x_D)
+- Burstiness per metric: B_S = CV(x_S), B_O = CV(x_O), B_D = CV(x_D)
+- Trend per metric:      C_S = trend_flag(x_S), C_O = trend_flag(x_O), C_D = trend_flag(x_D)
+
+Combine to **per-GPU components** (default is a conservative “max” across metrics):
+- T = max(T_S, T_O, T_D)
+- E = max(E_S, E_O, E_D)
+- B = max(B_S, B_O, B_D)
+- C = 1 if any of {C_S, C_O, C_D} is 1, else 0
+
+(Alternative: use a weighted sum across metrics when you want to favor/penalize specific resources.)
+
+### Composite Risk (per GPU, per window)
+RISK = wT*T + wE*E + wB*B + wC*C  
+Default weights: wT=0.5, wE=0.3, wB=0.1, wC=0.1 (tunable in YAML).
+
+**Interpretation**
+- T (tail) dominates: large p95 in any metric signals bursty high load.
+- E (EMA) adds recency: what the GPU “feels like now.”
+- B (CV) penalizes instability even if averages look OK.
+- C (trend) penalizes windows with clear upward/downward drift.
+
+**Hysteresis for Decisions**
+

@@ -1,0 +1,23 @@
+# Window & data
+N: 20            # window size (samples)
+noise: 0.01       # stddev around near-zero baseline (0..1)
+seed: 42
+
+# EMA
+alpha_mode: auto  # "auto" or "manual"
+alpha: 0.1        # used only if alpha_mode == "manual"
+
+# Output
+outdir: .
+readme: README.md
+readme_mode: write   # "write" to overwrite, "append" to append a new section
+
+# Per-metric risk weights (RISK = wT*T + wE*E + wB*B + wC*C)
+risk_weights:
+  wT: 0.5
+  wE: 0.3
+  wB: 0.1
+  wC: 0.1
+
+# Trend flag threshold on absolute slope
+trend_slope_threshold: 0.002
