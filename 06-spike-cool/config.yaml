@@ -1,0 +1,63 @@
+# Window & data
+N: 120
+seed: 42
+
+# Baseline levels (post-cool)
+levels:
+  smact_base: 0.10
+  smocc_base: 0.08
+  drama_base: 0.12
+
+# Noise (std dev) per metric
+noise:
+  smact_std: 0.02
+  smocc_std: 0.02
+  drama_std: 0.02
+
+# Spike model per metric (single early burst + exponential cool-off tail)
+# y = base + gaussian_pulse(center, width, amp) + exp_tail(start_at, tau, tail_amp)
+spike:
+  smact:
+    center: 10     # sample index of spike center
+    width: 4       # stddev of the Gaussian pulse (samples)
+    amp: 0.7       # peak add-on
+    tail_start: 12 # when exponential tail begins
+    tau: 15        # decay time constant (samples)
+    tail_amp: 0.3  # tail amplitude at tail_start
+  smocc:
+    center: 12
+    width: 5
+    amp: 0.6
+    tail_start: 14
+    tau: 18
+    tail_amp: 0.25
+  drama:
+    center: 9
+    width: 4
+    amp: 0.65
+    tail_start: 11
+    tau: 16
+    tail_amp: 0.28
+
+# Clipping bounds
+clip_min: 0.0
+clip_max: 1.0
+
+# EMA
+alpha_mode: auto  # "auto" or "manual"
+alpha: 0.1        # used only if alpha_mode == "manual"
+
+# Output
+outdir: .
+readme: README.md
+readme_mode: append
+
+# Per-metric risk weights (RISK = wT*T + wE*E + wB*B + wC*C)
+risk_weights:
+  wT: 0.5
+  wE: 0.3
+  wB: 0.1
+  wC: 0.1
+
+# Trend flag threshold (on absolute slope)
+trend_slope_threshold: 0.002
