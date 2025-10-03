@@ -1,0 +1,54 @@
+# Window & data
+N: 120
+seed: 42
+
+# Trend model per metric
+# y(t) = base + slope * t + noise
+trends:
+  smact:
+    base: 0.20
+    slope: 0.003     # positive: up, negative: down
+    piecewise: false # if true, changes slope at change_at
+    change_at: 60    # index where slope2 starts (if piecewise)
+    slope2: -0.002
+  smocc:
+    base: 0.25
+    slope: -0.002
+    piecewise: false
+    change_at: 60
+    slope2: 0.003
+  drama:
+    base: 0.18
+    slope: 0.0025
+    piecewise: false
+    change_at: 60
+    slope2: -0.002
+
+# Noise (std dev)
+noise:
+  smact_std: 0.02
+  smocc_std: 0.02
+  drama_std: 0.02
+
+# Clipping bounds
+clip_min: 0.0
+clip_max: 1.0
+
+# EMA
+alpha_mode: auto  # "auto" or "manual"
+alpha: 0.1        # used only if alpha_mode == "manual"
+
+# Output
+outdir: .
+readme: README.md
+readme_mode: append
+
+# Per-metric risk weights (RISK = wT*T + wE*E + wB*B + wC*C)
+risk_weights:
+  wT: 0.5
+  wE: 0.3
+  wB: 0.1
+  wC: 0.1
+
+# Trend flag threshold on absolute slope
+trend_slope_threshold: 0.002
