@@ -1,0 +1,57 @@
+# Window & data
+N: 120
+seed: 42
+
+# On-Off model per metric
+# y(t) alternates between LOW and HIGH with a duty cycle (ON fraction), optional jitter.
+bimodal:
+  smact:
+    low: 0.10
+    high: 0.80
+    period: 20        # samples per cycle
+    duty_cycle: 0.5   # fraction of period spent in HIGH
+    jitter: 0         # +/- samples jitter on phase change (integer)
+    random_phase: true
+  smocc:
+    low: 0.08
+    high: 0.60
+    period: 24
+    duty_cycle: 0.5
+    jitter: 0
+    random_phase: true
+  drama:
+    low: 0.12
+    high: 0.70
+    period: 22
+    duty_cycle: 0.5
+    jitter: 0
+    random_phase: true
+
+# Additive Gaussian noise (std dev) per metric
+noise:
+  smact_std: 0.03
+  smocc_std: 0.03
+  drama_std: 0.03
+
+# Clipping bounds
+clip_min: 0.0
+clip_max: 1.0
+
+# EMA
+alpha_mode: auto   # "auto" or "manual"
+alpha: 0.1         # used only if alpha_mode == "manual"
+
+# Output
+outdir: .
+readme: README.md
+readme_mode: append
+
+# Per-metric risk weights (RISK = wT*T + wE*E + wB*B + wC*C)
+risk_weights:
+  wT: 0.5
+  wE: 0.3
+  wB: 0.1
+  wC: 0.1
+
+# Trend flag threshold on absolute slope
+trend_slope_threshold: 0.002
