@@ -1,0 +1,56 @@
+# Window & data
+N: 120            # samples
+seed: 42
+
+# Baseline levels (low-to-moderate)
+levels:
+  smact_base: 0.15
+  smocc_base: 0.10
+  drama_base: 0.12
+
+# Noise around baseline
+noise:
+  smact_std: 0.03
+  smocc_std: 0.03
+  drama_std: 0.03
+
+# Burst model (per metric)
+# count ~ Poisson(lambda); each burst adds a Gaussian "pulse" (amp, width)
+bursts:
+  smact:
+    lam: 2.0       # expected bursts per window
+    amp_min: 0.4
+    amp_max: 0.8
+    width_min: 3   # samples (std of Gaussian pulse)
+    width_max: 8
+  smocc:
+    lam: 2.0
+    amp_min: 0.35
+    amp_max: 0.7
+    width_min: 3
+    width_max: 8
+  drama:
+    lam: 2.0
+    amp_min: 0.35
+    amp_max: 0.7
+    width_min: 3
+    width_max: 8
+
+# EMA
+alpha_mode: auto  # "auto" or "manual"
+alpha: 0.1        # used only if alpha_mode == "manual"
+
+# Output
+outdir: .
+readme: README.md
+readme_mode: append
+
+# Per-metric risk weights (RISK = wT*T + wE*E + wB*B + wC*C)
+risk_weights:
+  wT: 0.5
+  wE: 0.3
+  wB: 0.1
+  wC: 0.1
+
+# Trend flag threshold
+trend_slope_threshold: 0.002
