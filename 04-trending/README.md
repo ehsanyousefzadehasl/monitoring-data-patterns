@@ -1,3 +1,5 @@
+
+
 # Pattern 4 — Trending (Up/Down)
 
 **Config:** `N=120`, `ALPHA=0.016529` (auto-derived=`True`)
@@ -27,8 +29,17 @@ Trend flags: SMACT=1 • SMOCC=0 • DRAMA=1
 ## Per-Metric Risk (no mixing)
 Weights: wT=0.5, wE=0.3, wB=0.1, wC=0.1
 
-Metric | T (p95) | E (EMA) | B (CV) | C (trend) | RISK
----|---:|---:|---:|---:|---:
-SMACT | 0.5386 | 0.4039 | 0.2837 | 1.0 | 0.5188
-SMOCC | 0.2342 | 0.1186 | 0.5350 | 0.0 | 0.2062
-DRAMA | 0.4614 | 0.3469 | 0.2689 | 1.0 | 0.4617
+|Metric|T (p95)|E (EMA)|B (CV)|C (trend)|RISK|
+|---|---:|---:|---:|---:|---:|
+|SMACT|0.5386|0.4039|0.2837|1.0|0.5188|
+|SMOCC|0.2342|0.1186|0.5350|0.0|0.2062|
+|DRAMA|0.4614|0.3469|0.2689|1.0|0.4617|
+
+## Per-Metric Risk (v2 only)
+Weights: w_mean=0.2, w_median=0.2, w_p95=0.3, w_p50=0.1, w_ema=0.2
+
+|Metric|mean|median|p95|p50|EMA|RISK_v2|
+|---|---:|---:|---:|---:|---:|---:|
+|SMACT|0.3769|0.3753|0.5386|0.3753|0.4039|0.4303|
+|SMOCC|0.1327|0.1340|0.2342|0.1340|0.1186|0.1607|
+|DRAMA|0.3289|0.3368|0.4614|0.3368|0.3469|0.3746|

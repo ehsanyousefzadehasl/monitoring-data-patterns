@@ -1,3 +1,5 @@
+
+
 # Pattern 5 — Bimodal / On–Off
 
 **Config:** `N=120`, `ALPHA=0.016529` (auto-derived=`True`)
@@ -27,8 +29,17 @@ Trend flags: SMACT=0 • SMOCC=0 • DRAMA=0
 ## Per-Metric Risk (no mixing)
 Weights: wT=0.5, wE=0.3, wB=0.1, wC=0.1
 
-Metric | T (p95) | E (EMA) | B (CV) | C (trend) | RISK
----|---:|---:|---:|---:|---:
-SMACT | 0.8252 | 0.3744 | 0.7908 | 0.0 | 0.6040
-SMOCC | 0.6402 | 0.3749 | 0.7685 | 0.0 | 0.5094
-DRAMA | 0.7474 | 0.4622 | 0.6628 | 0.0 | 0.5787
+|Metric|T (p95)|E (EMA)|B (CV)|C (trend)|RISK|
+|---|---:|---:|---:|---:|---:|
+|SMACT|0.8252|0.3744|0.7908|0.0|0.6040|
+|SMOCC|0.6402|0.3749|0.7685|0.0|0.5094|
+|DRAMA|0.7474|0.4622|0.6628|0.0|0.5787|
+
+## Per-Metric Risk (v2 only)
+Weights: w_mean=0.2, w_median=0.2, w_p95=0.3, w_p50=0.1, w_ema=0.2
+
+|Metric|mean|median|p95|p50|EMA|RISK_v2|
+|---|---:|---:|---:|---:|---:|---:|
+|SMACT|0.4479|0.4448|0.8252|0.4448|0.3744|0.5455|
+|SMOCC|0.3390|0.3456|0.6402|0.3456|0.3749|0.4385|
+|DRAMA|0.4365|0.6587|0.7474|0.6587|0.4622|0.6016|

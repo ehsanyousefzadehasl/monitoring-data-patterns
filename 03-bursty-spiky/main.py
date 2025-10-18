@@ -27,6 +27,7 @@ def stats_series(x, alpha, slope_thresh):
     return {
         "mean": float(np.mean(x)),
         "median": float(np.median(x)),
+        "p50": pctl(x, 0.50),          # added for RISK_v2
         "p95": pctl(x, 0.95),
         "p99": pctl(x, 0.99),
         "ema_last": ema_last(x, alpha),
@@ -40,6 +41,28 @@ def risk_per_metric(stats, wT, wE, wB, wC):
     T = stats["p95"]; E = stats["ema_last"]; B = stats["cv"]; C = float(bool(stats["trend_flag"]))
     return {"T": T, "E": E, "B": B, "C": C, "RISK": wT*T + wE*E + wB*B + wC*C}
 
+# ---- RISK_v2 (additive) ----
+RISK_V2_W = {
+    "w_mean":   0.20,
+    "w_median": 0.20,
+    "w_p95":    0.30,
+    "w_p50":    0.10,
+    "w_ema":    0.20,
+}
+
+def risk2_per_metric(stats, w=RISK_V2_W):
+    mean_v   = stats["mean"]
+    median_v = stats["median"]
+    p95_v    = stats["p95"]
+    p50_v    = stats["p50"]
+    ema_v    = stats["ema_last"]
+    return {
+        "mean": mean_v, "median": median_v, "p95": p95_v, "p50": p50_v, "ema": ema_v,
+        "RISK2": (w["w_mean"]*mean_v + w["w_median"]*median_v +
+                  w["w_p95"]*p95_v   + w["w_p50"]*p50_v    +
+                  w["w_ema"]*ema_v)
+    }
+
 def plot_series(t, y, title, outfile):
     plt.figure(); plt.plot(t, y); plt.title(title)
     plt.xlabel("time (ticks)"); plt.ylabel("utilization")
@@ -49,36 +72,31 @@ def _row(d, cols): return " | ".join(f"{d[c]:.4f}" for c in cols)
 
 def build_md(params, sS, sO, sD, rS, rO, rD, imgs):
     cols = ["mean","median","p95","p99","ema_last","cv","mad","slope"]
-    md = f"""# Pattern 3 — Bursty / Spiky
-
-**Config:** `N={params['N']}`, `ALPHA={params['ALPHA']:.6f}` (auto-derived=`{params['ALPHA_AUTO']}`)  
-Baselines: SMACT={params['SMACT_BASE']} • SMOCC={params['SMOCC_BASE']} • DRAMA={params['DRAMA_BASE']}  
-Noise std: SMACT={params['SMACT_STD']} • SMOCC={params['SMOCC_STD']} • DRAMA={params['DRAMA_STD']}  
-Bursts (λ): SMACT={params['B_SM_LAM']} • SMOCC={params['B_SO_LAM']} • DRAMA={params['B_DR_LAM']}
-
-## Plots
-![SMACT]({os.path.basename(imgs['smact'])})
-![SMOCC]({os.path.basename(imgs['smocc'])})
-![DRAMA]({os.path.basename(imgs['drama'])})
-
-## Window Statistics (per metric)
-Metric | mean | median | p95 | p99 | EMA_last | CV | MAD | slope
----|---:|---:|---:|---:|---:|---:|---:|---:
-SMACT | {_row(sS, cols)}
-SMOCC | {_row(sO, cols)}
-DRAMA | {_row(sD, cols)}
-
-Trend flags: SMACT={sS['trend_flag']} • SMOCC={sO['trend_flag']} • DRAMA={sD['trend_flag']}
-
-## Per-Metric Risk (no mixing)
-Weights: wT={params['wT']}, wE={params['wE']}, wB={params['wB']}, wC={params['wC']}
-
-Metric | T (p95) | E (EMA) | B (CV) | C (trend) | RISK
----|---:|---:|---:|---:|---:
-SMACT | {rS['T']:.4f} | {rS['E']:.4f} | {rS['B']:.4f} | {rS['C']:.1f} | {rS['RISK']:.4f}
-SMOCC | {rO['T']:.4f} | {rO['E']:.4f} | {rO['B']:.4f} | {rO['C']:.1f} | {rO['RISK']:.4f}
-DRAMA | {rD['T']:.4f} | {rD['E']:.4f} | {rD['B']:.4f} | {rD['C']:.1f} | {rD['RISK']:.4f}
-"""
+    md = (
+        "# Pattern 3 — Bursty / Spiky\n\n"
+        f"**Config:** `N={params['N']}`, `ALPHA={params['ALPHA']:.6f}` (auto-derived=`{params['ALPHA_AUTO']}`)  \n"
+        f"Baselines: SMACT={params['SMACT_BASE']} • SMOCC={params['SMOCC_BASE']} • DRAMA={params['DRAMA_BASE']}  \n"
+        f"Noise std: SMACT={params['SMACT_STD']} • SMOCC={params['SMOCC_STD']} • DRAMA={params['DRAMA_STD']}  \n"
+        f"Bursts (λ): SMACT={params['B_SM_LAM']} • SMOCC={params['B_SO_LAM']} • DRAMA={params['B_DR_LAM']}\n\n"
+        "## Plots\n"
+        f"![SMACT]({os.path.basename(imgs['smact'])})\n"
+        f"![SMOCC]({os.path.basename(imgs['smocc'])})\n"
+        f"![DRAMA]({os.path.basename(imgs['drama'])})\n\n"
+        "## Window Statistics (per metric)\n"
+        "Metric | mean | median | p95 | p99 | EMA_last | CV | MAD | slope\n"
+        "---|---:|---:|---:|---:|---:|---:|---:|---:\n"
+        f"SMACT | {_row(sS, cols)}\n"
+        f"SMOCC | {_row(sO, cols)}\n"
+        f"DRAMA | {_row(sD, cols)}\n\n"
+        f"Trend flags: SMACT={sS['trend_flag']} • SMOCC={sO['trend_flag']} • DRAMA={sD['trend_flag']}\n\n"
+        "## Per-Metric Risk (no mixing)\n"
+        f"Weights: wT={params['wT']}, wE={params['wE']}, wB={params['wB']}, wC={params['wC']}\n\n"
+        "|Metric|T (p95)|E (EMA)|B (CV)|C (trend)|RISK|\n"
+        "|---|---:|---:|---:|---:|---:|\n"
+        f"|SMACT|{rS['T']:.4f}|{rS['E']:.4f}|{rS['B']:.4f}|{rS['C']:.1f}|{rS['RISK']:.4f}|\n"
+        f"|SMOCC|{rO['T']:.4f}|{rO['E']:.4f}|{rO['B']:.4f}|{rO['C']:.1f}|{rO['RISK']:.4f}|\n"
+        f"|DRAMA|{rD['T']:.4f}|{rD['E']:.4f}|{rD['B']:.4f}|{rD['C']:.1f}|{rD['RISK']:.4f}|\n"
+    )
     return md
 
 def write_readme(path, content, mode="append"):
@@ -177,6 +195,11 @@ def main():
     r_smocc = risk_per_metric(s_smocc, wT, wE, wB, wC)
     r_drama = risk_per_metric(s_drama, wT, wE, wB, wC)
 
+    # RISK_v2
+    r2_smact = risk2_per_metric(s_smact)
+    r2_smocc = risk2_per_metric(s_smocc)
+    r2_drama = risk2_per_metric(s_drama)
+
     # plots
     os.makedirs(outdir, exist_ok=True)
     img_smact = os.path.join(outdir, "pattern3_smact.png")
@@ -186,7 +209,7 @@ def main():
     plot_series(t, smocc, "Pattern 3: Bursty/Spiky — SMOCC", img_smocc)
     plot_series(t, drama, "Pattern 3: Bursty/Spiky — DRAMA", img_drama)
 
-    # README append
+    # README content: figures -> stats -> RISK v1
     section = build_md(
         {"N": N, "ALPHA": alpha, "ALPHA_AUTO": alpha_auto,
          "SMACT_BASE": smact_base, "SMOCC_BASE": smocc_base, "DRAMA_BASE": drama_base,
@@ -197,13 +220,29 @@ def main():
         r_smact, r_smocc, r_drama,
         {"smact": img_smact, "smocc": img_smocc, "drama": img_drama}
     )
+
+    # Append RISK v2 table and write once (clean)
+    v2_table = (
+        "\n## Per-Metric Risk (v2 only)\n\n"
+        f"Weights: w_mean={RISK_V2_W['w_mean']}, w_median={RISK_V2_W['w_median']}, "
+        f"w_p95={RISK_V2_W['w_p95']}, w_p50={RISK_V2_W['w_p50']}, w_ema={RISK_V2_W['w_ema']}\n\n"
+        "|Metric|mean|median|p95|p50|EMA|RISK_v2|\n"
+        "|---|---:|---:|---:|---:|---:|---:|\n"
+        f"|SMACT|{r2_smact['mean']:.4f}|{r2_smact['median']:.4f}|{r2_smact['p95']:.4f}|{r2_smact['p50']:.4f}|{r2_smact['ema']:.4f}|{r2_smact['RISK2']:.4f}|\n"
+        f"|SMOCC|{r2_smocc['mean']:.4f}|{r2_smocc['median']:.4f}|{r2_smocc['p95']:.4f}|{r2_smocc['p50']:.4f}|{r2_smocc['ema']:.4f}|{r2_smocc['RISK2']:.4f}|\n"
+        f"|DRAMA|{r2_drama['mean']:.4f}|{r2_drama['median']:.4f}|{r2_drama['p95']:.4f}|{r2_drama['p50']:.4f}|{r2_drama['ema']:.4f}|{r2_drama['RISK2']:.4f}|\n"
+    )
+    content = section + v2_table
+
     readme_path = os.path.join(outdir, readme)
-    write_readme(readme_path, section, mode=readme_mode)
+    write_readme(readme_path, content, mode="write")  # clean write
 
     print(f"alpha = {alpha:.6f} ({'auto' if alpha_auto else 'manual'})")
     print("Per-metric RISK:",
           {"SMACT": round(r_smact["RISK"],6), "SMOCC": round(r_smocc["RISK"],6), "DRAMA": round(r_drama["RISK"],6)})
-    print(f"README {readme_mode} to: {readme_path}")
+    print("Per-metric RISK_v2:",
+          {"SMACT": round(r2_smact["RISK2"],6), "SMOCC": round(r2_smocc["RISK2"],6), "DRAMA": round(r2_drama["RISK2"],6)})
+    print(f"README written to: {readme_path}")
 
 if __name__ == "__main__":
     main()

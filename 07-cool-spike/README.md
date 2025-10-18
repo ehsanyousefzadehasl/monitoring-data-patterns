@@ -1,3 +1,5 @@
+
+
 # Pattern 7 — Cool then Spike (late spike)
 
 **Config:** `N=120`, `ALPHA=0.016529` (auto-derived=`True`)
@@ -28,8 +30,17 @@ Trend flags: SMACT=1 • SMOCC=1 • DRAMA=1
 ## Per-Metric Risk (no mixing)
 Weights: wT=0.5, wE=0.3, wB=0.1, wC=0.1
 
-Metric | T (p95) | E (EMA) | B (CV) | C (trend) | RISK
----|---:|---:|---:|---:|---:
-SMACT | 0.7528 | 0.2650 | 1.0019 | 1.0 | 0.6561
-SMOCC | 0.6693 | 0.2332 | 1.0743 | 1.0 | 0.6121
-DRAMA | 0.7177 | 0.2672 | 0.8953 | 1.0 | 0.6285
+|Metric|T (p95)|E (EMA)|B (CV)|C (trend)|RISK|
+|---|---:|---:|---:|---:|---:|
+|SMACT|0.7528|0.2650|1.0019|1.0|0.6561|
+|SMOCC|0.6693|0.2332|1.0743|1.0|0.6121|
+|DRAMA|0.7177|0.2672|0.8953|1.0|0.6285|
+
+## Per-Metric Risk (v2 only)
+Weights: w_mean=0.2, w_median=0.2, w_p95=0.3, w_p50=0.1, w_ema=0.2
+
+|Metric|mean|median|p95|p50|EMA|RISK_v2|
+|---|---:|---:|---:|---:|---:|---:|
+|SMACT|0.2021|0.1120|0.7528|0.1120|0.2650|0.3529|
+|SMOCC|0.1787|0.0928|0.6693|0.0928|0.2332|0.3110|
+|DRAMA|0.2118|0.1295|0.7177|0.1295|0.2672|0.3500|

@@ -30,6 +30,7 @@ def stats_series(x, alpha, slope_thresh):
     return {
         "mean": float(np.mean(x)),
         "median": float(np.median(x)),
+        "p50": pctl(x, 0.50),          # added for RISK_v2
         "p95": pctl(x, 0.95),
         "p99": pctl(x, 0.99),
         "ema_last": ema_last(x, alpha),
@@ -46,6 +47,28 @@ def risk_per_metric(stats, wT, wE, wB, wC):
     C = float(bool(stats["trend_flag"]))
     return {"T": T, "E": E, "B": B, "C": C, "RISK": wT*T + wE*E + wB*B + wC*C}
 
+# ---- RISK_v2: weighted mean/median/p95/p50/EMA ----
+RISK_V2_W = {
+    "w_mean":   0.20,
+    "w_median": 0.20,
+    "w_p95":    0.30,
+    "w_p50":    0.10,
+    "w_ema":    0.20,
+}
+
+def risk2_per_metric(stats, w=RISK_V2_W):
+    mean_v   = stats["mean"]
+    median_v = stats["median"]
+    p95_v    = stats["p95"]
+    p50_v    = stats["p50"]
+    ema_v    = stats["ema_last"]
+    return {
+        "mean": mean_v, "median": median_v, "p95": p95_v, "p50": p50_v, "ema": ema_v,
+        "RISK2": (w["w_mean"]*mean_v + w["w_median"]*median_v +
+                  w["w_p95"]*p95_v   + w["w_p50"]*p50_v    +
+                  w["w_ema"]*ema_v)
+    }
+
 def plot_series(t, y, title, outfile):
     plt.figure()
     plt.plot(t, y)
@@ -55,36 +78,38 @@ def plot_series(t, y, title, outfile):
 
 def _row(d, cols): return " | ".join(f"{d[c]:.4f}" for c in cols)
 
-def build_md(params, sS, sO, sD, rS, rO, rD, imgs):
+def build_md(params, sS, sO, sD, rS, rO, rD, r2S, r2O, r2D, imgs):
     cols = ["mean","median","p95","p99","ema_last","cv","mad","slope"]
-    md = f"""# Pattern 1 — Idle / Flat Low
-
-**Config:** `N={params['N']}`, `NOISE={params['NOISE']}`, `ALPHA={params['ALPHA']:.6f}`  
-(ALPHA auto-derived = `{params['ALPHA_AUTO']}`; rule: α ≈ 2/(N+1))
-
-## Plots
-![SMACT]({os.path.basename(imgs['smact'])})
-![SMOCC]({os.path.basename(imgs['smocc'])})
-![DRAMA]({os.path.basename(imgs['drama'])})
-
-## Window Statistics (per metric)
-Metric | mean | median | p95 | p99 | EMA_last | CV | MAD | slope
----|---:|---:|---:|---:|---:|---:|---:|---:
-SMACT | {_row(sS, cols)}
-SMOCC | {_row(sO, cols)}
-DRAMA | {_row(sD, cols)}
-
-Per-metric trend flags: SMACT={sS['trend_flag']} • SMOCC={sO['trend_flag']} • DRAMA={sD['trend_flag']}
-
-## Per-Metric Risk
-Weights: wT={params['wT']}, wE={params['wE']}, wB={params['wB']}, wC={params['wC']}
-
-Metric | T (p95) | E (EMA) | B (CV) | C (trend) | RISK
----|---:|---:|---:|---:|---:
-SMACT | {rS['T']:.4f} | {rS['E']:.4f} | {rS['B']:.4f} | {rS['C']:.1f} | {rS['RISK']:.4f}
-SMOCC | {rO['T']:.4f} | {rO['E']:.4f} | {rO['B']:.4f} | {rO['C']:.1f} | {rO['RISK']:.4f}
-DRAMA | {rD['T']:.4f} | {rD['E']:.4f} | {rD['B']:.4f} | {rD['C']:.1f} | {rD['RISK']:.4f}
-"""
+    md = (
+f"# Pattern 1 — Idle / Flat Low\n\n"
+f"**Config:** `N={params['N']}`, `NOISE={params['NOISE']}`, `ALPHA={params['ALPHA']:.6f}`  \n"
+f"(ALPHA auto-derived = `{params['ALPHA_AUTO']}`; rule: α ≈ 2/(N+1))\n\n"
+f"## Plots\n"
+f"![SMACT]({os.path.basename(imgs['smact'])})\n"
+f"![SMOCC]({os.path.basename(imgs['smocc'])})\n"
+f"![DRAMA]({os.path.basename(imgs['drama'])})\n\n"
+f"## Window Statistics (per metric)\n"
+f"Metric | mean | median | p95 | p99 | EMA_last | CV | MAD | slope\n"
+f"---|---:|---:|---:|---:|---:|---:|---:|---:\n"
+f"SMACT | {_row(sS, cols)}\n"
+f"SMOCC | {_row(sO, cols)}\n"
+f"DRAMA | {_row(sD, cols)}\n\n"
+f"Per-metric trend flags: SMACT={sS['trend_flag']} • SMOCC={sO['trend_flag']} • DRAMA={sD['trend_flag']}\n\n"
+f"## Per-Metric Risk (v1)\n"
+f"Weights: wT={params['wT']}, wE={params['wE']}, wB={params['wB']}, wC={params['wC']}\n\n"
+f"|Metric|T (p95)|E (EMA)|B (CV)|C (trend)|RISK|\n"
+f"|---|---:|---:|---:|---:|---:|\n"
+f"|SMACT|{rS['T']:.4f}|{rS['E']:.4f}|{rS['B']:.4f}|{rS['C']:.1f}|{rS['RISK']:.4f}|\n"
+f"|SMOCC|{rO['T']:.4f}|{rO['E']:.4f}|{rO['B']:.4f}|{rO['C']:.1f}|{rO['RISK']:.4f}|\n"
+f"|DRAMA|{rD['T']:.4f}|{rD['E']:.4f}|{rD['B']:.4f}|{rD['C']:.1f}|{rD['RISK']:.4f}|\n\n"
+f"## Per-Metric Risk (v2: mean/median/p95/p50/EMA)\n"
+f"Weights: w_mean={RISK_V2_W['w_mean']}, w_median={RISK_V2_W['w_median']}, w_p95={RISK_V2_W['w_p95']}, w_p50={RISK_V2_W['w_p50']}, w_ema={RISK_V2_W['w_ema']}\n\n"
+f"|Metric|mean|median|p95|p50|EMA|RISK_v2|\n"
+f"|---|---:|---:|---:|---:|---:|---:|\n"
+f"|SMACT|{r2S['mean']:.4f}|{r2S['median']:.4f}|{r2S['p95']:.4f}|{r2S['p50']:.4f}|{r2S['ema']:.4f}|{r2S['RISK2']:.4f}|\n"
+f"|SMOCC|{r2O['mean']:.4f}|{r2O['median']:.4f}|{r2O['p95']:.4f}|{r2O['p50']:.4f}|{r2O['ema']:.4f}|{r2O['RISK2']:.4f}|\n"
+f"|DRAMA|{r2D['mean']:.4f}|{r2D['median']:.4f}|{r2D['p95']:.4f}|{r2D['p50']:.4f}|{r2D['ema']:.4f}|{r2D['RISK2']:.4f}|\n"
+    )
     return md
 
 def write_readme(path, content, mode="write"):
@@ -134,10 +159,15 @@ def main():
     s_smocc = stats_series(smocc, alpha, slope_thresh)
     s_drama = stats_series(drama, alpha, slope_thresh)
 
-    # per-metric risk (no mixing)
+    # per-metric risk (v1)
     r_smact = risk_per_metric(s_smact, wT, wE, wB, wC)
     r_smocc = risk_per_metric(s_smocc, wT, wE, wB, wC)
     r_drama = risk_per_metric(s_drama, wT, wE, wB, wC)
+
+    # per-metric risk (v2)
+    r2_smact = risk2_per_metric(s_smact)
+    r2_smocc = risk2_per_metric(s_smocc)
+    r2_drama = risk2_per_metric(s_drama)
 
     # plots
     img_smact = os.path.join(outdir, "pattern1_smact.png")
@@ -153,6 +183,7 @@ def main():
          "wT": wT, "wE": wE, "wB": wB, "wC": wC},
         s_smact, s_smocc, s_drama,
         r_smact, r_smocc, r_drama,
+        r2_smact, r2_smocc, r2_drama,
         {"smact": img_smact, "smocc": img_smocc, "drama": img_drama}
     )
     readme_path = os.path.join(outdir, readme)
@@ -162,6 +193,8 @@ def main():
     print(f"alpha = {alpha:.6f} ({'auto' if alpha_auto else 'manual'})")
     print("Per-metric RISK:",
           {"SMACT": round(r_smact["RISK"],6), "SMOCC": round(r_smocc["RISK"],6), "DRAMA": round(r_drama["RISK"],6)})
+    print("Per-metric RISK_v2:",
+          {"SMACT": round(r2_smact["RISK2"],6), "SMOCC": round(r2_smocc["RISK2"],6), "DRAMA": round(r2_drama["RISK2"],6)})
     print(f"README {'appended to' if readme_mode=='append' else 'written to'}: {readme_path}")
 
 if __name__ == "__main__":
