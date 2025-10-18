@@ -27,8 +27,7 @@ def trend_flag(x, thresh): return 1 if abs(lin_slope(x)) > float(thresh) else 0
 def stats_series(x, alpha, slope_thresh):
     return {
         "mean": float(np.mean(x)),
-        "median": float(np.median(x)),
-        "p50": pctl(x, 0.50),          # added for RISK_v2
+        "p50": pctl(x, 0.50),
         "p95": pctl(x, 0.95),
         "p99": pctl(x, 0.99),
         "ema_last": ema_last(x, alpha),
@@ -45,26 +44,23 @@ def risk_per_metric(stats, wT, wE, wB, wC):
     C = float(bool(stats["trend_flag"]))
     return {"T": T, "E": E, "B": B, "C": C, "RISK": wT*T + wE*E + wB*B + wC*C}
 
-# ---- RISK_v2: weighted mean/median/p95/p50/EMA ----
+# ---- RISK_v2: weighted mean/p95/p50/EMA ----
 RISK_V2_W = {
-    "w_mean":   0.20,
-    "w_median": 0.20,
-    "w_p95":    0.30,
-    "w_p50":    0.10,
-    "w_ema":    0.20,
+    "w_mean": 0.20,
+    "w_p95":  0.30,
+    "w_p50":  0.30,  # updated weight
+    "w_ema":  0.20,
 }
 
 def risk2_per_metric(stats, w=RISK_V2_W):
-    mean_v   = stats["mean"]
-    median_v = stats["median"]
-    p95_v    = stats["p95"]
-    p50_v    = stats["p50"]
-    ema_v    = stats["ema_last"]
+    mean_v = stats["mean"]
+    p95_v  = stats["p95"]
+    p50_v  = stats["p50"]
+    ema_v  = stats["ema_last"]
     return {
-        "mean": mean_v, "median": median_v, "p95": p95_v, "p50": p50_v, "ema": ema_v,
-        "RISK2": (w["w_mean"]*mean_v + w["w_median"]*median_v +
-                  w["w_p95"]*p95_v   + w["w_p50"]*p50_v    +
-                  w["w_ema"]*ema_v)
+        "mean": mean_v, "p95": p95_v, "p50": p50_v, "ema": ema_v,
+        "RISK2": (w["w_mean"]*mean_v + w["w_p95"]*p95_v +
+                  w["w_p50"]*p50_v  + w["w_ema"]*ema_v)
     }
 
 def plot_series(t, y, title, outfile):
@@ -77,7 +73,7 @@ def plot_series(t, y, title, outfile):
 def _row(d, cols): return " | ".join(f"{d[c]:.4f}" for c in cols)
 
 def build_md(params, sS, sO, sD, rS, rO, rD, r2S, r2O, r2D, imgs):
-    cols = ["mean","median","p95","p99","ema_last","cv","mad","slope"]
+    cols = ["mean","p95","p99","ema_last","cv","mad","slope"]
     md = (
         "# Pattern 2 — Steady Busy\n\n"
         f"**Config:** `N={params['N']}`, `ALPHA={params['ALPHA']:.6f}` (auto-derived=`{params['ALPHA_AUTO']}`)  \n"
@@ -88,8 +84,8 @@ def build_md(params, sS, sO, sD, rS, rO, rD, r2S, r2O, r2D, imgs):
         f"![SMOCC]({os.path.basename(imgs['smocc'])})\n"
         f"![DRAMA]({os.path.basename(imgs['drama'])})\n\n"
         "## Window Statistics (per metric)\n"
-        "Metric | mean | median | p95 | p99 | EMA_last | CV | MAD | slope\n"
-        "---|---:|---:|---:|---:|---:|---:|---:|---:\n"
+        "Metric | mean | p95 | p99 | EMA_last | CV | MAD | slope\n"
+        "---|---:|---:|---:|---:|---:|---:|---:\n"
         f"SMACT | {_row(sS, cols)}\n"
         f"SMOCC | {_row(sO, cols)}\n"
         f"DRAMA | {_row(sD, cols)}\n\n"
@@ -102,12 +98,12 @@ def build_md(params, sS, sO, sD, rS, rO, rD, r2S, r2O, r2D, imgs):
         f"|SMOCC|{rO['T']:.4f}|{rO['E']:.4f}|{rO['B']:.4f}|{rO['C']:.1f}|{rO['RISK']:.4f}|\n"
         f"|DRAMA|{rD['T']:.4f}|{rD['E']:.4f}|{rD['B']:.4f}|{rD['C']:.1f}|{rD['RISK']:.4f}|\n\n"
         "## Per-Metric Risk (v2 only)\n"
-        f"Weights: w_mean={RISK_V2_W['w_mean']}, w_median={RISK_V2_W['w_median']}, w_p95={RISK_V2_W['w_p95']}, w_p50={RISK_V2_W['w_p50']}, w_ema={RISK_V2_W['w_ema']}\n\n"
-        "|Metric|mean|median|p95|p50|EMA|RISK_v2|\n"
-        "|---|---:|---:|---:|---:|---:|---:|\n"
-        f"|SMACT|{r2S['mean']:.4f}|{r2S['median']:.4f}|{r2S['p95']:.4f}|{r2S['p50']:.4f}|{r2S['ema']:.4f}|{r2S['RISK2']:.4f}|\n"
-        f"|SMOCC|{r2O['mean']:.4f}|{r2O['median']:.4f}|{r2O['p95']:.4f}|{r2O['p50']:.4f}|{r2O['ema']:.4f}|{r2O['RISK2']:.4f}|\n"
-        f"|DRAMA|{r2D['mean']:.4f}|{r2D['median']:.4f}|{r2D['p95']:.4f}|{r2D['p50']:.4f}|{r2D['ema']:.4f}|{r2D['RISK2']:.4f}|\n"
+        f"Weights: w_mean={RISK_V2_W['w_mean']}, w_p95={RISK_V2_W['w_p95']}, w_p50={RISK_V2_W['w_p50']}, w_ema={RISK_V2_W['w_ema']}\n\n"
+        "|Metric|mean|p95|p50|EMA|RISK_v2|\n"
+        "|---|---:|---:|---:|---:|---:|\n"
+        f"|SMACT|{r2S['mean']:.4f}|{r2S['p95']:.4f}|{r2S['p50']:.4f}|{r2S['ema']:.4f}|{r2S['RISK2']:.4f}|\n"
+        f"|SMOCC|{r2O['mean']:.4f}|{r2O['p95']:.4f}|{r2O['p50']:.4f}|{r2O['ema']:.4f}|{r2O['RISK2']:.4f}|\n"
+        f"|DRAMA|{r2D['mean']:.4f}|{r2D['p95']:.4f}|{r2D['p50']:.4f}|{r2D['ema']:.4f}|{r2D['RISK2']:.4f}|\n"
     )
     return md
 
@@ -126,7 +122,6 @@ def main():
     with open(args.config, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
 
-    # config
     N = int(cfg.get("N", 120))
     seed = int(cfg.get("seed", 42))
 
@@ -158,27 +153,22 @@ def main():
     np.random.seed(seed); os.makedirs(outdir, exist_ok=True)
     t = np.arange(N)
 
-    # steady high series (clip to [0,1])
     smact = np.clip(np.random.normal(loc=smact_mean, scale=smact_std, size=N), 0, 1)
     smocc = np.clip(np.random.normal(loc=smocc_mean, scale=smocc_std, size=N), 0, 1)
     drama = np.clip(np.random.normal(loc=drama_mean, scale=drama_std, size=N), 0, 1)
 
-    # stats per metric
     s_smact = stats_series(smact, alpha, slope_thresh)
     s_smocc = stats_series(smocc, alpha, slope_thresh)
     s_drama = stats_series(drama, alpha, slope_thresh)
 
-    # per-metric risk (v1)
     r_smact = risk_per_metric(s_smact, wT, wE, wB, wC)
     r_smocc = risk_per_metric(s_smocc, wT, wE, wB, wC)
     r_drama = risk_per_metric(s_drama, wT, wE, wB, wC)
 
-    # per-metric risk (v2)
     r2_smact = risk2_per_metric(s_smact)
     r2_smocc = risk2_per_metric(s_smocc)
     r2_drama = risk2_per_metric(s_drama)
 
-    # plots
     img_smact = os.path.join(outdir, "pattern2_smact.png")
     img_smocc = os.path.join(outdir, "pattern2_smocc.png")
     img_drama = os.path.join(outdir, "pattern2_drama.png")
@@ -186,7 +176,6 @@ def main():
     plot_series(t, smocc, "Pattern 2: Steady Busy — SMOCC", img_smocc)
     plot_series(t, drama, "Pattern 2: Steady Busy — DRAMA", img_drama)
 
-    # README append
     section = build_md(
         {"N": N, "ALPHA": alpha, "ALPHA_AUTO": alpha_auto,
          "SMACT_MEAN": smact_mean, "SMOCC_MEAN": smocc_mean, "DRAMA_MEAN": drama_mean,

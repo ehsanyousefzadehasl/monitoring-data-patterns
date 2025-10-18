@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os, argparse, numpy as np, pandas as pd, matplotlib.pyplot as plt, yaml, random
 
-# ----------------- helpers (same as before) -----------------
+# ----------------- helpers -----------------
 def ema_last(x, alpha):
     return float(pd.Series(x).ewm(alpha=alpha, adjust=False).mean().iloc[-1])
 
@@ -26,8 +26,7 @@ def trend_flag(x, thresh): return 1 if abs(lin_slope(x)) > float(thresh) else 0
 def stats_series(x, alpha, slope_thresh):
     return {
         "mean": float(np.mean(x)),
-        "median": float(np.median(x)),
-        "p50": pctl(x, 0.50),          # added for RISK_v2
+        "p50": pctl(x, 0.50),
         "p95": pctl(x, 0.95),
         "p99": pctl(x, 0.99),
         "ema_last": ema_last(x, alpha),
@@ -41,26 +40,23 @@ def risk_per_metric(stats, wT, wE, wB, wC):
     T = stats["p95"]; E = stats["ema_last"]; B = stats["cv"]; C = float(bool(stats["trend_flag"]))
     return {"T": T, "E": E, "B": B, "C": C, "RISK": wT*T + wE*E + wB*B + wC*C}
 
-# ---- RISK_v2 (additive) ----
+# ---- RISK_v2 (updated weights, median removed) ----
 RISK_V2_W = {
-    "w_mean":   0.20,
-    "w_median": 0.20,
-    "w_p95":    0.30,
-    "w_p50":    0.10,
-    "w_ema":    0.20,
+    "w_mean": 0.20,
+    "w_p95":  0.30,
+    "w_p50":  0.30,
+    "w_ema":  0.20,
 }
 
 def risk2_per_metric(stats, w=RISK_V2_W):
-    mean_v   = stats["mean"]
-    median_v = stats["median"]
-    p95_v    = stats["p95"]
-    p50_v    = stats["p50"]
-    ema_v    = stats["ema_last"]
+    mean_v = stats["mean"]
+    p95_v  = stats["p95"]
+    p50_v  = stats["p50"]
+    ema_v  = stats["ema_last"]
     return {
-        "mean": mean_v, "median": median_v, "p95": p95_v, "p50": p50_v, "ema": ema_v,
-        "RISK2": (w["w_mean"]*mean_v + w["w_median"]*median_v +
-                  w["w_p95"]*p95_v   + w["w_p50"]*p50_v    +
-                  w["w_ema"]*ema_v)
+        "mean": mean_v, "p95": p95_v, "p50": p50_v, "ema": ema_v,
+        "RISK2": (w["w_mean"]*mean_v + w["w_p95"]*p95_v +
+                  w["w_p50"]*p50_v  + w["w_ema"]*ema_v)
     }
 
 def plot_series(t, y, title, outfile):
@@ -71,7 +67,7 @@ def plot_series(t, y, title, outfile):
 def _row(d, cols): return " | ".join(f"{d[c]:.4f}" for c in cols)
 
 def build_md(params, sS, sO, sD, rS, rO, rD, imgs):
-    cols = ["mean","median","p95","p99","ema_last","cv","mad","slope"]
+    cols = ["mean","p95","p99","ema_last","cv","mad","slope"]
     md = (
         "# Pattern 3 — Bursty / Spiky\n\n"
         f"**Config:** `N={params['N']}`, `ALPHA={params['ALPHA']:.6f}` (auto-derived=`{params['ALPHA_AUTO']}`)  \n"
@@ -83,8 +79,8 @@ def build_md(params, sS, sO, sD, rS, rO, rD, imgs):
         f"![SMOCC]({os.path.basename(imgs['smocc'])})\n"
         f"![DRAMA]({os.path.basename(imgs['drama'])})\n\n"
         "## Window Statistics (per metric)\n"
-        "Metric | mean | median | p95 | p99 | EMA_last | CV | MAD | slope\n"
-        "---|---:|---:|---:|---:|---:|---:|---:|---:\n"
+        "Metric | mean | p95 | p99 | EMA_last | CV | MAD | slope\n"
+        "---|---:|---:|---:|---:|---:|---:|---:\n"
         f"SMACT | {_row(sS, cols)}\n"
         f"SMOCC | {_row(sO, cols)}\n"
         f"DRAMA | {_row(sD, cols)}\n\n"
@@ -108,29 +104,26 @@ def write_readme(path, content, mode="append"):
 # ----------------- burst generator -----------------
 def add_gaussian_bursts(y, lam, amp_min, amp_max, width_min, width_max, rng):
     N = len(y)
-    k = rng.poisson(lam=lam)  # how many bursts
+    k = rng.poisson(lam=lam)
     for _ in range(k):
         center = rng.integers(low=0, high=N)
         amp = rng.uniform(amp_min, amp_max)
         width = rng.integers(width_min, width_max+1)
-        # Gaussian pulse
         t = np.arange(N)
         pulse = amp * np.exp(-0.5 * ((t - center) / max(1, width))**2)
         y += pulse
-    # clip to [0,1]
     np.clip(y, 0.0, 1.0, out=y)
     return y
 
 # ----------------- main -----------------
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--config", type=str, default="config_bursty.yaml")
+    ap.add_argument("--config", type=str, default="config.yaml")
     args = ap.parse_args()
 
     with open(args.config, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
 
-    # config
     N = int(cfg.get("N", 120))
     seed = int(cfg.get("seed", 42))
 
@@ -146,7 +139,6 @@ def main():
 
     bcfg = cfg.get("bursts", {}) or {}
     bS = bcfg.get("smact", {}); bO = bcfg.get("smocc", {}); bD = bcfg.get("drama", {})
-    # defaults
     def bp(d, key, default): return d.get(key, default)
     lamS = float(bp(bS, "lam", 2.0)); lamO = float(bp(bO, "lam", 2.0)); lamD = float(bp(bD, "lam", 2.0))
     S = dict(amp_min=float(bp(bS,"amp_min",0.4)), amp_max=float(bp(bS,"amp_max",0.8)),
@@ -171,11 +163,9 @@ def main():
     wT, wE, wB, wC = float(w.get("wT", 0.5)), float(w.get("wE", 0.3)), float(w.get("wB", 0.1)), float(w.get("wC", 0.1))
     slope_thresh = float(cfg.get("trend_slope_threshold", 0.002))
 
-    # RNGs
     np.random.seed(seed)
     rng_np = np.random.default_rng(seed)
 
-    # synth series: baseline + noise + bursts
     t = np.arange(N)
     smact = np.clip(np.random.normal(loc=smact_base, scale=smact_std, size=N), 0, 1)
     smocc = np.clip(np.random.normal(loc=smocc_base, scale=smocc_std, size=N), 0, 1)
@@ -185,22 +175,18 @@ def main():
     smocc = add_gaussian_bursts(smocc, lamO, **O, rng=rng_np)
     drama = add_gaussian_bursts(drama, lamD, **D, rng=rng_np)
 
-    # stats per metric
     s_smact = stats_series(smact, alpha, slope_thresh)
     s_smocc = stats_series(smocc, alpha, slope_thresh)
     s_drama = stats_series(drama, alpha, slope_thresh)
 
-    # per-metric risk
     r_smact = risk_per_metric(s_smact, wT, wE, wB, wC)
     r_smocc = risk_per_metric(s_smocc, wT, wE, wB, wC)
     r_drama = risk_per_metric(s_drama, wT, wE, wB, wC)
 
-    # RISK_v2
     r2_smact = risk2_per_metric(s_smact)
     r2_smocc = risk2_per_metric(s_smocc)
     r2_drama = risk2_per_metric(s_drama)
 
-    # plots
     os.makedirs(outdir, exist_ok=True)
     img_smact = os.path.join(outdir, "pattern3_smact.png")
     img_smocc = os.path.join(outdir, "pattern3_smocc.png")
@@ -209,7 +195,6 @@ def main():
     plot_series(t, smocc, "Pattern 3: Bursty/Spiky — SMOCC", img_smocc)
     plot_series(t, drama, "Pattern 3: Bursty/Spiky — DRAMA", img_drama)
 
-    # README content: figures -> stats -> RISK v1
     section = build_md(
         {"N": N, "ALPHA": alpha, "ALPHA_AUTO": alpha_auto,
          "SMACT_BASE": smact_base, "SMOCC_BASE": smocc_base, "DRAMA_BASE": drama_base,
@@ -221,21 +206,20 @@ def main():
         {"smact": img_smact, "smocc": img_smocc, "drama": img_drama}
     )
 
-    # Append RISK v2 table and write once (clean)
     v2_table = (
         "\n## Per-Metric Risk (v2 only)\n\n"
-        f"Weights: w_mean={RISK_V2_W['w_mean']}, w_median={RISK_V2_W['w_median']}, "
-        f"w_p95={RISK_V2_W['w_p95']}, w_p50={RISK_V2_W['w_p50']}, w_ema={RISK_V2_W['w_ema']}\n\n"
-        "|Metric|mean|median|p95|p50|EMA|RISK_v2|\n"
-        "|---|---:|---:|---:|---:|---:|---:|\n"
-        f"|SMACT|{r2_smact['mean']:.4f}|{r2_smact['median']:.4f}|{r2_smact['p95']:.4f}|{r2_smact['p50']:.4f}|{r2_smact['ema']:.4f}|{r2_smact['RISK2']:.4f}|\n"
-        f"|SMOCC|{r2_smocc['mean']:.4f}|{r2_smocc['median']:.4f}|{r2_smocc['p95']:.4f}|{r2_smocc['p50']:.4f}|{r2_smocc['ema']:.4f}|{r2_smocc['RISK2']:.4f}|\n"
-        f"|DRAMA|{r2_drama['mean']:.4f}|{r2_drama['median']:.4f}|{r2_drama['p95']:.4f}|{r2_drama['p50']:.4f}|{r2_drama['ema']:.4f}|{r2_drama['RISK2']:.4f}|\n"
+        f"Weights: w_mean={RISK_V2_W['w_mean']}, w_p95={RISK_V2_W['w_p95']}, "
+        f"w_p50={RISK_V2_W['w_p50']}, w_ema={RISK_V2_W['w_ema']}\n\n"
+        "|Metric|mean|p95|p50|EMA|RISK_v2|\n"
+        "|---|---:|---:|---:|---:|---:|\n"
+        f"|SMACT|{r2_smact['mean']:.4f}|{r2_smact['p95']:.4f}|{r2_smact['p50']:.4f}|{r2_smact['ema']:.4f}|{r2_smact['RISK2']:.4f}|\n"
+        f"|SMOCC|{r2_smocc['mean']:.4f}|{r2_smocc['p95']:.4f}|{r2_smocc['p50']:.4f}|{r2_smocc['ema']:.4f}|{r2_smocc['RISK2']:.4f}|\n"
+        f"|DRAMA|{r2_drama['mean']:.4f}|{r2_drama['p95']:.4f}|{r2_drama['p50']:.4f}|{r2_drama['ema']:.4f}|{r2_drama['RISK2']:.4f}|\n"
     )
     content = section + v2_table
 
     readme_path = os.path.join(outdir, readme)
-    write_readme(readme_path, content, mode="write")  # clean write
+    write_readme(readme_path, content, mode="write")
 
     print(f"alpha = {alpha:.6f} ({'auto' if alpha_auto else 'manual'})")
     print("Per-metric RISK:",
